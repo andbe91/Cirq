@@ -1025,3 +1025,20 @@ def test_cached_method():
     assert b.bar_calls == {123: 1, 234: 1}
     assert b.bar(123) == b.bar(123) == (id(b), 123 * 2)
     assert b.bar_calls == {123: 2, 234: 1}
+
+
+class NoArgs:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    @cached_method
+    def zero(self) -> int:
+        self.calls += 1
+        return 0
+
+
+def test_cached_method_no_args_caches_falsy_result():
+    a, b = NoArgs(), NoArgs()
+    assert a.zero() == a.zero() == 0
+    assert a.calls == 1
+    assert b.calls == 0

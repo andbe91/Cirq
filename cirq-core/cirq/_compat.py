@@ -67,6 +67,9 @@ def with_debug(value: bool) -> Iterator[None]:
 
 TFunc = TypeVar('TFunc', bound=Callable)
 
+# Sentinel for cache misses in `cached_method`, distinct from any cached value.
+_CACHE_MISS = object()
+
 
 @overload
 def cached_method(__func: TFunc) -> TFunc: ...
@@ -99,12 +102,13 @@ def cached_method(method: TFunc | None = None, *, maxsize: int = 128) -> Any:
 
             @functools.wraps(func)
             def wrapped_no_args(self):
-                try:
-                    return getattr(self, cache_name)
-                except AttributeError:
+                # Use a default rather than catching AttributeError: raising and catching the
+                # exception on every cache miss dominates the cost of cheap cached methods.
+                result = getattr(self, cache_name, _CACHE_MISS)
+                if result is _CACHE_MISS:
                     result = func(self)
                     object.__setattr__(self, cache_name, result)
-                    return result
+                return result
 
             return wrapped_no_args
 
